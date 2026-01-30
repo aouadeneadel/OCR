@@ -1,5 +1,4 @@
 # ABN-OCR  
-## Note DSI / RSSI – Sécurité & Conformité
 
 ---
 
@@ -54,6 +53,20 @@ Utilisateur
 → Service Ollama (local)  
 → Résultat OCR (local)
 
+### 4.3 code 
+.
+├── script.py
+├── README.md
+├── ABN_128_128.png
+├── banque-du-numerique-logo_couleur.jpg
+```bash
+ollama pull deepseek-ocr
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install streamlit requests pillow
+streamlit run script.py
+```
 ---
 
 ## 5. Sécurité des données
