@@ -53,11 +53,8 @@ streamlit run app.py
 http://localhost:8501
 
 ## Sécurité et conformité
-# Traitement 100 % local
-
-# Aucune donnée transmise vers l’extérieur
-
-# Compatible avec des environnements sensibles (finance, juridique, secteur public)
-
-# Déploiement possible sur poste utilisateur ou serveur interne
+###  Traitement 100 % local
+### Aucune donnée transmise vers l’extérieur
+### Compatible avec des environnements sensibles (finance, juridique, secteur public)
+### Déploiement possible sur poste utilisateur ou serveur interne
 
