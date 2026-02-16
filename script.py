@@ -6,7 +6,7 @@ import io
 import csv
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL = "deepseek-ocr"
+MODEL = "glm-ocr"
 
 # --- Page configuration ---
 st.set_page_config(
