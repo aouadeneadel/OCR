@@ -4,25 +4,36 @@ import base64
 from PIL import Image
 import io
 import csv
+from datetime import datetime
 
+# --- CONFIGURATION OCR ---
+# Si Docker utilise --network host, localhost fonctionne pour OLLAMA
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "deepseek-ocr"
 
-# --- Page configuration ---
+# --- CONFIGURATION NEXTCLOUD ---
+# Remplace par ton serveur Nextcloud / login / app password
+NEXTCLOUD_SERVER = "<NEXTCLOUD_SERVER>"  # ex: 100.x.x.x ou https://cloud.mondomaine.com
+NEXTCLOUD_USER = "<NEXTCLOUD_USER>"
+NEXTCLOUD_PASS = "<NEXTCLOUD_APP_PASSWORD>"
+NEXTCLOUD_FOLDER = "OCR-CSVs"  # dossier sur Nextcloud où stocker les CSV
+
+# --- PAGE STREAMLIT ---
 st.set_page_config(
-    page_title="ABN-OCR", 
-    page_icon="ABN_128_128.png"  # This works if it's in the same folder
+    page_title="ABN-OCR",
+    page_icon="ABN_128_128.png"
 )
 
 st.title("ABN-OCR")
 
-# --- Load and display logo ---
-logo = Image.open("banque-du-numerique-logo_couleur.jpg")  # Local file
+# --- Logo ---
+logo = Image.open("banque-du-numerique-logo_couleur.jpg")
 st.image(logo, width=150)
 st.caption("OCR local")
 
+# --- Upload image ---
 uploaded_file = st.file_uploader(
-    "Upload une image (PNG / JPG)",
+    "Upload une image (PNG / JPG / JPEG)",
     type=["png", "jpg", "jpeg"]
 )
 
@@ -32,7 +43,7 @@ if uploaded_file:
 
     if st.button("🔍 Lancer l’OCR"):
         with st.spinner("Analyse OCR en cours…"):
-            # Convert image to base64
+            # --- Convert image to base64 ---
             buf = io.BytesIO()
             image.save(buf, format="PNG")
             img_base64 = base64.b64encode(buf.getvalue()).decode()
@@ -44,32 +55,46 @@ if uploaded_file:
                 "stream": False
             }
 
-            r = requests.post(OLLAMA_URL, json=payload)
+            # --- Appel à OLLAMA ---
+            try:
+                r = requests.post(OLLAMA_URL, json=payload, timeout=30)
+                r.raise_for_status()
+                result_text = r.json().get("response", "")
+            except requests.exceptions.RequestException as e:
+                result_text = f"❌ Erreur lors de la requête OCR : {e}"
 
-            if r.status_code == 200:
-                result_text = r.json()["response"]
-            else:
-                result_text = f"❌ Erreur {r.status_code}\n{r.text}"
-
-        # Display OCR text
+        # --- Affichage OCR ---
         st.text_area("📝 Texte reconnu", result_text, height=300)
 
-        # Convert OCR text to CSV
+        # --- Génération CSV ---
         csv_buffer = io.StringIO()
         writer = csv.writer(csv_buffer)
-
-        # Simple splitting by lines, adjust if your OCR returns structured text
         for line in result_text.splitlines():
-            # If you want each word in a separate column, use: writer.writerow(line.split())
-            writer.writerow([line])  # Each line in one row
-
+            writer.writerow([line])
         csv_data = csv_buffer.getvalue()
 
-        # Download CSV
+        # --- Nom de fichier horodaté ---
+        filename = f"ocr_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+
+        # --- Upload sur Nextcloud via WebDAV ---
+        nextcloud_url = f"https://{NEXTCLOUD_SERVER}/remote.php/webdav/{NEXTCLOUD_FOLDER}/{filename}"
+        try:
+            response = requests.put(
+                nextcloud_url,
+                data=csv_data.encode("utf-8"),
+                auth=(NEXTCLOUD_USER, NEXTCLOUD_PASS)
+            )
+            if response.status_code in [200, 201, 204]:
+                st.success(f"✅ CSV uploadé sur Nextcloud : {filename}")
+            else:
+                st.error(f"❌ Erreur upload Nextcloud : {response.status_code} {response.text}")
+        except Exception as e:
+            st.error(f"❌ Exception lors de l’upload Nextcloud : {e}")
+
+        # --- Bouton téléchargement local CSV ---
         st.download_button(
-            "⬇️ Télécharger CSV",
+            "⬇️ Télécharger CSV localement",
             csv_data,
-            file_name="ocr.csv",
+            file_name=filename,
             mime="text/csv"
         )
-
